@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+    inputs:
+      test_message:
+        description: "Telegram-এ টেস্ট মেসেজ পাঠাবেন?"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,7 +26,24 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Telegram test message
+        if: ${{ github.event.inputs.test_message == 'true' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          RESP=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=✅ টেস্ট মেসেজ: সিগন্যাল বট ঠিকমতো যুক্ত হয়েছে।")
+          if echo "$RESP" | grep -q '"ok":true'; then
+            echo "পাঠানো সফল, Telegram দেখুন।"
+          else
+            echo "ব্যর্থ: $RESP"
+            exit 1
+          fi
+
       - name: Check signal
+        if: ${{ github.event.inputs.test_message != 'true' }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
